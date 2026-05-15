@@ -313,6 +313,34 @@ h1, h2, h3, h4, h5, h6 { color: #0a192f; font-weight: 600; }
 [data-testid="stSidebar"] { background-color: #FFFFFF; border-right: 1px solid #E5E7EB; }
 .stTextArea textarea { border-radius: 8px; border: 1px solid #E5E7EB; padding: 1rem; }
 .stProgress > div > div > div > div { background-color: #1E3A8A; }
+
+/* Convert Radio Buttons to Rectangular Pills */
+div[role="radiogroup"] { gap: 0.5rem; }
+div[role="radiogroup"] label {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 0.4rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+div[role="radiogroup"] label:hover {
+    background-color: #E0F2FE;
+    border-color: #BAE6FD;
+}
+div[role="radiogroup"] label:has(input:checked) {
+    background-color: #1E3A8A;
+    border-color: #1E3A8A;
+    box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+}
+div[role="radiogroup"] label:has(input:checked) p {
+    color: #FFFFFF !important;
+}
+div[role="radiogroup"] label div:first-child {
+    display: none !important; /* Hide the circle */
+}
+
 .suggestion-box {
     background-color: #E0F2FE; border: 1px solid #BAE6FD;
     border-radius: 8px; padding: 1rem; margin-bottom: 0.5rem; color: #0a192f;
@@ -336,7 +364,7 @@ def init_genai():
         return True
     return False
 
-def analyze_japanese_text(text, culture, relationship, purpose, lang="EN"):
+def analyze_japanese_text(text, culture, relationship, lang="EN"):
     if not init_genai():
         st.error("API Key is missing. Please configure GEMINI_API_KEY in Streamlit Secrets.")
         st.stop()
@@ -346,16 +374,22 @@ def analyze_japanese_text(text, culture, relationship, purpose, lang="EN"):
     Analyze the following Japanese text: "{text}"
     Context: {culture}
     Relationship: {relationship}
-    Purpose: {purpose}
-    Target Explanation Language: {lang} (EN/JP/VI)
     
     Provide your analysis strictly in the following JSON format without any markdown wrappers or extra text:
     {{
         "formality": <int between 0-100>,
         "naturalness": <int between 0-100>,
         "relevance": "<High/Medium/Low>",
-        "overall": "<Short overall evaluation in {lang}>",
-        "culture_explanation": "<Cultural explanation in {lang}>",
+        "overall": {{
+            "EN": "<Short overall evaluation in English>",
+            "JP": "<Short overall evaluation in Japanese>",
+            "VI": "<Short overall evaluation in Vietnamese>"
+        }},
+        "culture_explanation": {{
+            "EN": "<Cultural explanation in English>",
+            "JP": "<Cultural explanation in Japanese>",
+            "VI": "<Cultural explanation in Vietnamese>"
+        }},
         "rewrite_suggestions": ["<Japanese rewrite 1>", "<Japanese rewrite 2>"],
         "related_expressions": ["<Related Japanese phrase 1>", "<Related Japanese phrase 2>"]
     }}
@@ -379,12 +413,15 @@ def generate_japanese_sentence(context, goal, lang="EN"):
     Generate a natural and culturally appropriate Japanese sentence for the following situation:
     Context: {context}
     Goal: {goal}
-    Target Explanation Language: {lang} (EN/JP/VI)
     
     Provide the result strictly in the following JSON format without any markdown wrappers:
     {{
         "res": "<The generated Japanese sentence>",
-        "exp": "<Explanation of why this sentence is natural and appropriate, written in {lang}>"
+        "exp": {{
+            "EN": "<Explanation of why this sentence is natural and appropriate, written in English>",
+            "JP": "<Explanation in Japanese>",
+            "VI": "<Explanation in Vietnamese>"
+        }}
     }}
     """
     try:
@@ -427,9 +464,6 @@ if page == t("nav_home"):
         st.markdown(f"### {t('culture_context')}")
         culture = st.selectbox(t("culture_label"), [t("culture_workplace"), t("culture_daily"), t("culture_event")])
         relationship = st.selectbox(t("relationship_label"), [t("rel_boss"), t("rel_colleague"), t("rel_client"), t("rel_friend")])
-        st.markdown(f"### {t('purpose_title')}")
-        purpose = st.radio(t("purpose_label"), [t("purp_convey"), t("purp_opinion"), t("purp_request"), t("purp_thanks"), t("purp_apologize"), t("purp_decline")])
-
     st.markdown(f"### {t('msg_analysis')}")
     col_input, col_result = st.columns([3, 2])
 
@@ -443,14 +477,15 @@ if page == t("nav_home"):
                 st.error(t("error_empty"))
             else:
                 with st.spinner(t("analyzing")):
-                    st.session_state.analysis_results = analyze_japanese_text(input_text, culture, relationship, purpose, current_lang)
+                    st.session_state.analysis_results = analyze_japanese_text(input_text, culture, relationship, current_lang)
                     if st.session_state.get("setting_save_hist", True):
                         st.session_state.history_data.insert(0, {
                             "id": str(time.time()),
                             "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
                             "text": input_text,
                             "context": relationship,
-                            "type": "Analysis"
+                            "type": "Analysis",
+                            "results": st.session_state.analysis_results
                         })
         
         if 'analysis_results' in st.session_state:
@@ -463,14 +498,16 @@ if page == t("nav_home"):
                 with c3: st.metric(t("relevance"), res['relevance']); st.progress(0.8)
                 st.markdown("---")
                 st.markdown(f"#### {t('overall')}")
-                st.write(res['overall'])
+                overall_text = res['overall'].get(current_lang, res['overall']) if isinstance(res['overall'], dict) else res['overall']
+                st.write(overall_text)
 
     with col_result:
         if 'analysis_results' in st.session_state:
             res = st.session_state.analysis_results
             with st.container(border=True):
                 st.markdown(f"#### {t('culture_exp')}")
-                st.info(res['culture_explanation'])
+                culture_text = res['culture_explanation'].get(current_lang, res['culture_explanation']) if isinstance(res['culture_explanation'], dict) else res['culture_explanation']
+                st.info(culture_text)
             with st.container(border=True):
                 st.markdown(f"#### {t('rewrite_sugg')}")
                 for s in res['rewrite_suggestions']: st.markdown(f'<div class="suggestion-box">{s}</div>', unsafe_allow_html=True)
@@ -503,20 +540,39 @@ elif page == t("nav_history"):
     else:
         for idx, item in enumerate(filtered_data):
             st.markdown(f"""
-            <div class="glass-card">
+            <div class="glass-card" style="margin-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;">
                 <span style="color: #6B7280; font-size: 0.875rem;">{item['date']} | {item['type']}</span>
                 <h4 style="margin-top: 0.5rem; color: #0a192f;">{item['text']}</h4>
                 <span style="background: #E0F2FE; color: #1E3A8A; padding: 0.25rem 0.75rem; border-radius: 999px;">{item['context']}</span>
             </div>
             """, unsafe_allow_html=True)
-            a1, a2, _ = st.columns([1, 1, 8])
-            with a1: 
-                if st.button(t('view_detail'), key=f"v_{item['id']}", use_container_width=True):
-                    st.success("Details are shown in their respective tabs!")
-            with a2: 
-                if st.button(t('delete'), key=f"d_{item['id']}", use_container_width=True):
+            
+            with st.expander(t('view_detail')):
+                if item['type'] == 'Analysis' and 'results' in item:
+                    res = item['results']
+                    overall_text = res['overall'].get(current_lang, res['overall']) if isinstance(res['overall'], dict) else res['overall']
+                    st.write(f"**{t('overall')}**: {overall_text}")
+                    c1, c2, c3 = st.columns(3)
+                    with c1: st.metric(t("formality"), f"{res['formality']}%")
+                    with c2: st.metric(t("naturalness"), f"{res['naturalness']}%")
+                    with c3: st.metric(t("relevance"), res['relevance'])
+                    culture_text = res['culture_explanation'].get(current_lang, res['culture_explanation']) if isinstance(res['culture_explanation'], dict) else res['culture_explanation']
+                    st.info(culture_text)
+                    st.write(f"**{t('rewrite_sugg')}**")
+                    for s in res['rewrite_suggestions']: st.markdown(f"- {s}")
+                elif item['type'] == 'Generate' and 'results' in item:
+                    res = item['results']
+                    st.markdown(f"<h3 style='color:#1E3A8A; margin-top:0;'>{res['res']}</h3>", unsafe_allow_html=True)
+                    exp_text = res['exp'].get(current_lang, res['exp']) if isinstance(res['exp'], dict) else res['exp']
+                    st.write(exp_text)
+                else:
+                    st.warning("No detailed data found for this record.")
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                if st.button(t('delete'), key=f"d_{item['id']}"):
                     st.session_state.history_data = [h for h in st.session_state.history_data if h['id'] != item['id']]
                     st.rerun()
+            st.markdown("<br>", unsafe_allow_html=True)
 
 elif page == t("nav_learning"):
     st.markdown(f"## {t('nav_learning')}")
@@ -556,13 +612,14 @@ elif page == t("nav_generate"):
                         "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
                         "text": goal,
                         "context": selected_ctx,
-                        "type": "Generate"
+                        "type": "Generate",
+                        "results": res
                     })
                 st.success("Success!")
                 st.markdown(f"""
                 <div class="glass-card" style="border-left: 4px solid #3B82F6;">
                     <h3 style="color:#1E3A8A; margin-bottom: 0.5rem;">{res['res']}</h3>
-                    <p style="color:#4B5563; margin:0;">{res['exp']}</p>
+                    <p style="color:#4B5563; margin:0;">{res['exp'].get(current_lang, res['exp']) if isinstance(res['exp'], dict) else res['exp']}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
