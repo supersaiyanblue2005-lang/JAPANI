@@ -329,7 +329,7 @@ def analyze_japanese_text(text, culture, relationship, purpose, lang="EN"):
     }}
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(prompt)
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
@@ -356,7 +356,7 @@ def generate_japanese_sentence(context, goal, lang="EN"):
     }}
     """
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-pro")
         response = model.generate_content(prompt)
         clean_json = response.text.replace("```json", "").replace("```", "").strip()
         return json.loads(clean_json)
