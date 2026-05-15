@@ -3,6 +3,7 @@ import time
 import random
 import json
 import google.generativeai as genai
+from datetime import datetime
 
 
 # ==========================================
@@ -247,13 +248,44 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+JP:wght@300;400;600&display=swap');
 
 html, body, [class*="css"] { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
-[data-testid="stAppViewContainer"] { background-color: #F0F8FF; }
-[data-testid="stHeader"] { background-color: transparent; }
-[data-testid="stVerticalBlockBorderWrapper"] { 
+[data-testid="stAppViewContainer"] { 
     background-color: #FFFFFF; 
-    border-radius: 12px; 
-    border: none; 
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
+}
+[data-testid="stAppViewContainer"]::before {
+    content: "";
+    position: fixed;
+    top: -10vw;
+    right: -5vw;
+    width: 30vw;
+    height: 30vw;
+    background-color: #E0F2FE;
+    border-radius: 50%;
+    opacity: 0.6;
+    z-index: -1;
+    pointer-events: none;
+}
+[data-testid="stAppViewContainer"]::after {
+    content: "🌸";
+    position: fixed;
+    bottom: 3vh;
+    right: 2vw;
+    font-size: 6rem;
+    opacity: 0.15;
+    z-index: -1;
+    pointer-events: none;
+    filter: grayscale(20%) sepia(20%) hue-rotate(180deg); /* Shift pink to slightly blueish/pastel if needed, or leave normal */
+}
+[data-testid="stHeader"] { 
+    background-color: transparent; 
+    border-top: 5px solid #1E3A8A; 
+}
+[data-testid="stVerticalBlockBorderWrapper"] { 
+    background-color: rgba(255, 255, 255, 0.9); 
+    border-radius: 16px; 
+    border: 1px solid #E0F2FE; 
+    box-shadow: 0 10px 40px -10px rgba(30, 58, 138, 0.08); 
+    padding: 1.5rem; 
+    backdrop-filter: blur(10px);
 }
 h1, h2, h3, h4, h5, h6 { color: #0a192f; font-weight: 600; }
 
@@ -369,7 +401,7 @@ def generate_japanese_sentence(context, goal, lang="EN"):
 # ==========================================
 col1, col2, col3 = st.columns([1, 2, 1])
 with col1:
-    st.markdown("<h2 class='gradient-text' style='margin: 0; padding: 0; font-size: 2.2rem;'>💬 JAPANI</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='gradient-text' style='margin: 0; padding: 0; font-size: 2.2rem;'>🌸 JAPANI</h2>", unsafe_allow_html=True)
 with col3:
     st.radio("Language", ["EN", "JP", "VI"], index=2, horizontal=True, label_visibility="collapsed", key="lang_switcher")
 st.markdown("<hr style='margin-top: 0.5rem; margin-bottom: 2rem;'/>", unsafe_allow_html=True)
@@ -383,6 +415,9 @@ page = st.sidebar.radio("Go to", [t("nav_home"), t("nav_history"), t("nav_learni
 st.sidebar.divider()
 
 current_lang = st.session_state.get("lang_switcher", "VI")
+
+if 'history_data' not in st.session_state:
+    st.session_state.history_data = []
 
 # ==========================================
 # 5. PAGE LOGIC
@@ -409,6 +444,14 @@ if page == t("nav_home"):
             else:
                 with st.spinner(t("analyzing")):
                     st.session_state.analysis_results = analyze_japanese_text(input_text, culture, relationship, purpose, current_lang)
+                    if st.session_state.get("setting_save_hist", True):
+                        st.session_state.history_data.insert(0, {
+                            "id": str(time.time()),
+                            "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                            "text": input_text,
+                            "context": relationship,
+                            "type": "Analysis"
+                        })
         
         if 'analysis_results' in st.session_state:
             res = st.session_state.analysis_results
@@ -442,22 +485,38 @@ if page == t("nav_home"):
 elif page == t("nav_history"):
     st.markdown(f"## {t('history_title')}")
     c1, c2, c3 = st.columns([2, 1, 1])
-    with c1: st.text_input(t('search_kw'), max_chars=100)
-    with c2: st.selectbox(t('filter_context'), [t('all_contexts'), t('rel_boss'), t('rel_colleague')])
-    with c3: st.selectbox(t('sort_date'), [t('sort_new'), t('sort_old')])
+    with c1: search_kw = st.text_input(t('search_kw'), max_chars=100)
+    with c2: filter_ctx = st.selectbox(t('filter_context'), [t('all_contexts')] + [t('rel_boss'), t('rel_colleague'), t('rel_client'), t('rel_friend')])
+    with c3: sort_dt = st.selectbox(t('sort_date'), [t('sort_new'), t('sort_old')])
     st.markdown("---")
     
-    for _ in range(2):
-        st.markdown(f"""
-        <div class="glass-card">
-            <span style="color: #6B7280; font-size: 0.875rem;">2024-05-15 10:30</span>
-            <h4 style="margin-top: 0.5rem; color: #0a192f;">明日時間ありますか？相談したいことあります。</h4>
-            <span style="background: #E0F2FE; color: #1E3A8A; padding: 0.25rem 0.75rem; border-radius: 999px;">{t("rel_boss")}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        a1, a2, _ = st.columns([1, 1, 8])
-        with a1: st.button(t('view_detail'), key=f"v_{_}", use_container_width=True)
-        with a2: st.button(t('delete'), key=f"d_{_}", use_container_width=True)
+    filtered_data = st.session_state.history_data
+    if search_kw:
+        filtered_data = [item for item in filtered_data if search_kw.lower() in item['text'].lower()]
+    if filter_ctx != t('all_contexts'):
+        filtered_data = [item for item in filtered_data if filter_ctx in item.get('context', '')]
+    if sort_dt == t('sort_old'):
+        filtered_data = list(reversed(filtered_data))
+        
+    if not filtered_data:
+        st.info("No history found.")
+    else:
+        for idx, item in enumerate(filtered_data):
+            st.markdown(f"""
+            <div class="glass-card">
+                <span style="color: #6B7280; font-size: 0.875rem;">{item['date']} | {item['type']}</span>
+                <h4 style="margin-top: 0.5rem; color: #0a192f;">{item['text']}</h4>
+                <span style="background: #E0F2FE; color: #1E3A8A; padding: 0.25rem 0.75rem; border-radius: 999px;">{item['context']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            a1, a2, _ = st.columns([1, 1, 8])
+            with a1: 
+                if st.button(t('view_detail'), key=f"v_{item['id']}", use_container_width=True):
+                    st.success("Details are shown in their respective tabs!")
+            with a2: 
+                if st.button(t('delete'), key=f"d_{item['id']}", use_container_width=True):
+                    st.session_state.history_data = [h for h in st.session_state.history_data if h['id'] != item['id']]
+                    st.rerun()
 
 elif page == t("nav_learning"):
     st.markdown(f"## {t('nav_learning')}")
@@ -491,6 +550,14 @@ elif page == t("nav_generate"):
         if goal:
             with st.spinner("Generating..."):
                 res = generate_japanese_sentence(selected_ctx, goal, current_lang)
+                if st.session_state.get("setting_save_hist", True):
+                    st.session_state.history_data.insert(0, {
+                        "id": str(time.time()),
+                        "date": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "text": goal,
+                        "context": selected_ctx,
+                        "type": "Generate"
+                    })
                 st.success("Success!")
                 st.markdown(f"""
                 <div class="glass-card" style="border-left: 4px solid #3B82F6;">
@@ -511,7 +578,7 @@ elif page == t("nav_settings"):
         st.slider(t("set_length"), 1, 10, 5)
         st.slider(t("set_font"), 12, 24, 16)
     with c2:
-        st.toggle(t("set_hist"), value=True)
+        st.toggle(t("set_hist"), value=True, key="setting_save_hist")
         st.toggle(t("set_auto"), value=True)
         st.toggle(t("set_sound"), value=False)
         st.markdown("<br><br>", unsafe_allow_html=True)
