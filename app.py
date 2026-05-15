@@ -315,14 +315,21 @@ h1, h2, h3, h4, h5, h6 { color: #0a192f; font-weight: 600; }
 .stProgress > div > div > div > div { background-color: #1E3A8A; }
 
 /* Convert Radio Buttons to Rectangular Pills */
-div[role="radiogroup"] { gap: 0.5rem; }
+div[role="radiogroup"] { gap: 0.75rem; }
 div[role="radiogroup"] label {
     background-color: #F8FAFC;
     border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 0.4rem 1.2rem;
+    border-radius: 12px;
+    padding: 0.8rem 1.8rem;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+div[role="radiogroup"] label p {
+    font-size: 1.1rem !important;
     margin: 0;
 }
 div[role="radiogroup"] label:hover {
@@ -332,13 +339,14 @@ div[role="radiogroup"] label:hover {
 div[role="radiogroup"] label:has(input:checked) {
     background-color: #1E3A8A;
     border-color: #1E3A8A;
-    box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
 }
 div[role="radiogroup"] label:has(input:checked) p {
     color: #FFFFFF !important;
+    font-weight: bold;
 }
-div[role="radiogroup"] label div:first-child {
-    display: none !important; /* Hide the circle */
+div[role="radiogroup"] label > div:first-child {
+    display: none !important; /* Hide only the outer circle wrapper */
 }
 
 .suggestion-box {
