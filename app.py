@@ -477,7 +477,7 @@ if page == t("nav_home"):
 
     with col_input:
         with st.container(border=True):
-            input_text = st.text_area(t("input_label"), height=200, placeholder=t("input_placeholder"), max_chars=1000)
+            input_text = st.text_area(t("input_label"), height=200, placeholder=t("input_placeholder"), max_chars=1000, key="home_input_text")
             analyze_clicked = st.button(t("analyze_btn"), type="primary")
 
         if analyze_clicked:
@@ -530,9 +530,9 @@ if page == t("nav_home"):
 elif page == t("nav_history"):
     st.markdown(f"## {t('history_title')}")
     c1, c2, c3 = st.columns([2, 1, 1])
-    with c1: search_kw = st.text_input(t('search_kw'), max_chars=100)
-    with c2: filter_ctx = st.selectbox(t('filter_context'), [t('all_contexts')] + [t('rel_boss'), t('rel_colleague'), t('rel_client'), t('rel_friend')])
-    with c3: sort_dt = st.selectbox(t('sort_date'), [t('sort_new'), t('sort_old')])
+    with c1: search_kw = st.text_input(t('search_kw'), max_chars=100, key="hist_search_kw")
+    with c2: filter_ctx = st.selectbox(t('filter_context'), [t('all_contexts')] + [t('rel_boss'), t('rel_colleague'), t('rel_client'), t('rel_friend')], key="hist_filter_ctx")
+    with c3: sort_dt = st.selectbox(t('sort_date'), [t('sort_new'), t('sort_old')], key="hist_sort_dt")
     st.markdown("---")
     
     filtered_data = st.session_state.history_data
@@ -607,8 +607,8 @@ elif page == t("nav_learning"):
 elif page == t("nav_generate"):
     st.markdown(f"## {t('gen_title')}")
     ctxs = [t("gen_ctx_rest"), t("gen_ctx_school"), t("gen_ctx_office"), t("gen_ctx_interv"), t("gen_ctx_cs"), t("gen_ctx_date"), t("gen_ctx_travel"), t("gen_ctx_social"), t("gen_ctx_hospital"), t("gen_ctx_sales")]
-    selected_ctx = st.selectbox(t("gen_ctx"), ctxs)
-    goal = st.text_area(t("gen_goal"), height=100, placeholder=t("gen_goal_ph"))
+    selected_ctx = st.selectbox(t("gen_ctx"), ctxs, key="gen_ctx_select")
+    goal = st.text_area(t("gen_goal"), height=100, placeholder=t("gen_goal_ph"), key="gen_goal_input")
     
     if st.button(t("gen_btn"), type="primary"):
         if goal:
